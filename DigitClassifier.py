@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from mnist import MNIST
 import gzip
 import matplotlib.pyplot as plt
@@ -70,13 +72,22 @@ def make_mini_batch(X, Y, testsize = 60000, batchsize = 128):
 def dReLU(Z):
     return Z > 0
 
+def ReLU(Z):
+    return np.maximum(Z, 0)
+
+def SM(Z):
+    return np.exp(Z)/ np.sum(np.exp(Z))
+
+def L(A,Y):
+    return np.sum(A == Y)
+
 #train_in, train_lab, test_in, test_lab = load_data(train_in = 'train-images-idx3-ubyte.gz', train_lab = 'train-labels-idx1-ubyte.gz', test_lab = 't10k-labels-idx1-ubyte.gz', test_in = 't10k-images-idx3-ubyte.gz')
 #X, Y = trainset_prep(train_in, train_lab)
 #
 #print(np.shape(X))
 #
 #mean = np.sum(X, axis = 1).reshape(784,1) / 60000
-#print(np.shape(mean))
+#print(mean)
 #X = X - mean
 #
 #var = np.sum(X**2, axis = 1).reshape(784,1) / 60000
@@ -91,6 +102,25 @@ def dReLU(Z):
 #
 #print(np.shape(Y), num_batch)
 
+def set_hyperparameters():
+    L = 4
+    n = [784, 9, 5, 10]
+    m = 128
+    W = [[]]
+    B = [[]]
+
+    for l in range(1,L):
+        Wl = np.random.rand(n[l], n[l-1]) * 0.01
+        bl = np.zeros((n[l], 1), dtype = float)
+        W.append(Wl)
+        B.append(b1)
+
+    return L, n, W, B
+
+def forward_propagation(Xt, L, n, W, B):
+    pass
+
+
 def basicNN():
     #Mini batchs
     #Forward Propagation
@@ -104,17 +134,16 @@ def basicNN():
     print(n)
     m = 128
     W = []
-    b = []
+    B = []
     Z = []
+    A = []
     for i in range(1, L+1):
         Wi = np.random.rand(n[i],n[i-1]) * 0.01
         bi = np.zeros((n[i],1), dtype = float)
         Zi = np.zeros((n[i],m), dtype = float)
-        Ai = np.zeros((n[i],m), dtype = float)
         W.append(Wi)
         B.append(bi)
         Z.append(Zi)
-        A.append(Ai)
     print(W[1])
     print(np.shape(W[1]))
 
@@ -135,43 +164,50 @@ def basicNN():
     batchsize = 128
     num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = 60000, batchsize = 128)
 
-    nepoch = 100
+    nepoch = 10
     for epoch in range(nepoch):
         for i in range(num_batch):
             Xt = X[i]
             Yt = Y[i]
+            #print("Hello =", np.shape(Yt))
             #Forward Propagation
             Z1 = np.dot(W[0], Xt).reshape(n[1], batchsize) + B[0]
             A1 = ReLU(Z1)
             Z2 = np.dot(W[1],A1).reshape(n[2], batchsize) + B[1]
             A2 = ReLU(Z2)
             Z3 = np.dot(W[2],A2).reshape(n[3], batchsize) + B[2]
+            print(Z3, np.shape(Z3), epoch, i)
             A3 = SM(Z3)
 
             #Cost Calculation
-            J = 0
-            for i in range(batchsize):
-                J += L(A3[i], Yt[i])
-            J = J / batchsize
+            #J = 0
+            #for i in range(batchsize):
+            #    J += L(A3, Yt)
+            #J = J / batchsize
             #J = J + (lambd / (2*batchsize))*Feb(W)
 
             #Backward Propagation
-            dZ3 = A3 - Yt[i]
+            #print(np.shape(Yt), np.shape(A3))
+            dZ3 = A3 - Yt
             dW3 = np.dot(dZ3, A2.T) / batchsize
             db3 = np.sum(dZ3, axis = 1, keepdims = True) / batchsize
-            dZ2 = np.dot(np.dot(W2.T,dZ3)) * dReLU(Z2)
+            dZ2 = np.dot(W[2].T,dZ3) * dReLU(Z2)
             dW2 = np.dot(dZ2, A1.T) / batchsize
             db2 = np.sum(dZ2, axis = 1, keepdims = True) / batchsize
-            dZ1 = np.dot(np.dot(W2.T,dZ3)) * dReLU(Z2)
-            dW1 = np.dot(dZ1, X.T) / batchsize
+            dZ1 = np.dot(W[1].T,dZ2) * dReLU(Z1)
+            dW1 = np.dot(dZ1, Xt.T) / batchsize
             db1 = np.sum(dZ1, axis = 1, keepdims = True) / batchsize
 
             #Update Parameters
             α = 0.01
-            W1 = W1 - α*dW1
-            b1 = b1 - α*db1
-            W2 = W2 - α*dW2
-            b2 = b2 - α*db2
-            W3 = W3 - α*dW3
-            b3 = b3 - α*db3
-    return W1,b1,W2,b2,W3,b3,mean,var
+            W[0] = W[0] - α*dW1
+            B[0] = B[0] - α*db1
+            W[1] = W[1] - α*dW2
+            B[1] = B[1] - α*db2
+            W[2] = W[2] - α*dW3
+            B[2] = B[2] - α*db3
+    return W, B, mean, var
+
+W, B, mean, var = basicNN()
+
+print(np.shape(W[0]), W[0][0][0])
