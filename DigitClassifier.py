@@ -78,29 +78,28 @@ def ReLU(Z):
 def SM(Z):
     return np.exp(Z)/ np.sum(np.exp(Z))
 
-def L(A,Y):
-    return np.sum(A == Y)
+def dSM(Z):
+    return (SM(Z)*(1-SM(Z)))
+
+def Lf(A,Y):
+    #print(np.shape(A), np.shape(Y))
+    val = (-1*Y*np.log(A)) + ((1-Y)*np.log(1-A))
+    #print(val)
+    return val
 
 #train_in, train_lab, test_in, test_lab = load_data(train_in = 'train-images-idx3-ubyte.gz', train_lab = 'train-labels-idx1-ubyte.gz', test_lab = 't10k-labels-idx1-ubyte.gz', test_in = 't10k-images-idx3-ubyte.gz')
 #X, Y = trainset_prep(train_in, train_lab)
-#
 #print(np.shape(X))
 #
 #mean = np.sum(X, axis = 1).reshape(784,1) / 60000
-#print(mean)
 #X = X - mean
 #
 #var = np.sum(X**2, axis = 1).reshape(784,1) / 60000
-#print(np.shape(var))
 #for i in range(len(var)):
 #    if var[i] != 0:
 #        X[i] = X[i] / var[i]
 #
 #num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = 60000, batchsize = 128)
-#
-#print(np.shape(X), num_batch)
-#
-#print(np.shape(Y), num_batch)
 
 def set_hyperparameters():
     L = 4
@@ -113,101 +112,147 @@ def set_hyperparameters():
         Wl = np.random.rand(n[l], n[l-1]) * 0.01
         bl = np.zeros((n[l], 1), dtype = float)
         W.append(Wl)
-        B.append(b1)
+        B.append(bl)
 
     return L, n, W, B
 
-def forward_propagation(Xt, L, n, W, B):
-    pass
+def reset_ZA(L, n, Xt, batchsize = 128):
+    Z = []
+    Z.append(Xt)
+    A = []
+    A.append(Xt)
+    #print(Z[0], np.shape(Xt))
+    for l in range(1,L):
+        Zl = np.zeros((n[l], batchsize), dtype = float)
+        Al = np.zeros((n[l], batchsize), dtype = float)
+        Z.append(Zl)
+        A.append(Al)
+    return Z, A
 
+def forward_propagation(L, n, batchsize, W, B, Z, A):
+    for i in range(1,len(Z)):
+        Z[i] = np.dot(W[i], A[i-1]).reshape(n[i], batchsize) + B[i]
+        if (i == L-1):
+            A[i] = SM(Z[i])
+        else:
+            A[i] = ReLU(Z[i])
+    return Z, A
 
+def cost_calc(Y_hat, Y):
+    batchsize = Y_hat.shape[1]
+    cost = (np.dot(Y, np.log(Y_hat).T) + np.dot(1-Y, np.log(1-Y_hat).T)) * (-1/batchsize)
+    return np.squeeze(cost)
+
+def get_accuracy(Y_hat, Y):
+    prob = np.copy(Y_hat)
+    prob[prob > 0.5] = 1
+    prob[prob <= 0.5] = 0
+    print(prob.shape, Y.shape)
+    return (prob == Y).all(axis = 0).mean()
+
+def backward_propagation(A, Z, Y, W, B, L, n):
+    batchsize = Y.shape[1]
+    #print(Y.shape, A[L-1].shape)
+    dA = []
+    da = -(np.divide(Y, A[L-1]) - np.divide(1-Y, 1-A[L-1]))
+    dA.append(da)
+    dZ = [[]]
+    dW = [[]]
+    dB = [[]]
+    
+    #Calculating dZ for all layers
+    for i in range(L-1, 0, -1):
+        if (i == L-1):
+            dz = A[i] - Y
+        else:
+            dz = np.dot(W[i+1].T,dZ[0]) * dReLU(Z[i])
+        dZ.insert(0, dz)
+        #print(dZ[0].shape)
+
+    #Caluculating dW, dB for all layers
+    for i in range(1,L):
+        dw = np.dot(dZ[i-1], A[i-1].T) / batchsize
+        db = np.sum(dZ[i-1], axis = 1, keepdims = True) / batchsize
+        #print(i, dw.shape, db.shape)
+        
+        dW.append(dw)
+        dB.append(db)
+
+    return dW, dB
+
+#dZ3 = A[3] - Y
+#print(dZ3.shape)
+#dW3 = np.dot(dZ3, A[2].T) / batchsize
+#print(dW3.shape, W[3].shape)
+#dB3 = np.sum(dZ3, axis = 1, keepdims = True) / batchsize
+
+#dZ2 = np.dot(W[3].T, dZ3) * dReLU(Z[2])
+#print(dZ2.shape)
+#dW2 = np.dot(dZ2, A[1].T) / batchsize
+#dB2 = np.sum(dZ2, axis = 1, keepdims = True) / batchsize
+
+#dZ1 = np.dot(W[2].T, dZ2) * dReLU(Z[1])
+#print(dZ1.shape)
+#dW1 = np.dot(dZ1, A[0].T) / batchsize
+#dB1 = np.sum(dZ1, axis = 1, keepdims = True) / batchsize
+        
 def basicNN():
     #Mini batchs
     #Forward Propagation
     #Cost Calculation
     #Backward Propagation
-    #Adam Optimization
-    #Learning Rate Decay
-    
-    L = 3 #No of Layers
-    n = [784,9,5,10] #No of Nodes in each layer
-    print(n)
-    m = 128
-    W = []
-    B = []
-    Z = []
-    A = []
-    for i in range(1, L+1):
-        Wi = np.random.rand(n[i],n[i-1]) * 0.01
-        bi = np.zeros((n[i],1), dtype = float)
-        Zi = np.zeros((n[i],m), dtype = float)
-        W.append(Wi)
-        B.append(bi)
-        Z.append(Zi)
-    print(W[1])
-    print(np.shape(W[1]))
 
+    L, n, W, B = set_hyperparameters()
 
+    #Loading Parameters
     train_in, train_lab, test_in, test_lab = load_data(train_in = 'train-images-idx3-ubyte.gz', train_lab = 'train-labels-idx1-ubyte.gz', test_lab = 't10k-labels-idx1-ubyte.gz', test_in = 't10k-images-idx3-ubyte.gz')
     X, Y = trainset_prep(train_in, train_lab)
-
-    mean = np.sum(X, axis = 1).reshape(784,1) / 60000
-    print(np.shape(mean))
+    _, Batch = (np.shape(X))
+    mean = np.sum(X, axis = 1).reshape(784,1) / Batch
+    #print(np.shape(mean))
     X = X - mean
     
-    var = np.sum(X**2, axis = 1).reshape(784,1) / 60000
-    print(np.shape(var))
+    var = np.sum(X**2, axis = 1).reshape(784,1) / Batch
+    #print(np.shape(var))
     for i in range(len(var)):
         if var[i] != 0:
             X[i] = X[i] / var[i]
 
     batchsize = 128
     num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = 60000, batchsize = 128)
+    cost_history = []
+    accuracy_history = []
 
-    nepoch = 10
+    nepoch = 1
     for epoch in range(nepoch):
         for i in range(num_batch):
             Xt = X[i]
             Yt = Y[i]
-            #print("Hello =", np.shape(Yt))
+
+            Z, A = reset_ZA(L, n, Xt, batchsize)
             #Forward Propagation
-            Z1 = np.dot(W[0], Xt).reshape(n[1], batchsize) + B[0]
-            A1 = ReLU(Z1)
-            Z2 = np.dot(W[1],A1).reshape(n[2], batchsize) + B[1]
-            A2 = ReLU(Z2)
-            Z3 = np.dot(W[2],A2).reshape(n[3], batchsize) + B[2]
-            print(Z3, np.shape(Z3), epoch, i)
-            A3 = SM(Z3)
+            Z, A = forward_propagation(L, n, batchsize, W, B, Z, A)
 
             #Cost Calculation
-            #J = 0
-            #for i in range(batchsize):
-            #    J += L(A3, Yt)
-            #J = J / batchsize
-            #J = J + (lambd / (2*batchsize))*Feb(W)
+            J = cost_calc(Y_hat = A[L-1],Y = Yt)
+            cost_history.append(J)
+            Accuracy = get_accuracy(Y_hat = A[L-1], Y = Yt)
+            accuracy_history.append(Accuracy)
 
             #Backward Propagation
-            #print(np.shape(Yt), np.shape(A3))
-            dZ3 = A3 - Yt
-            dW3 = np.dot(dZ3, A2.T) / batchsize
-            db3 = np.sum(dZ3, axis = 1, keepdims = True) / batchsize
-            dZ2 = np.dot(W[2].T,dZ3) * dReLU(Z2)
-            dW2 = np.dot(dZ2, A1.T) / batchsize
-            db2 = np.sum(dZ2, axis = 1, keepdims = True) / batchsize
-            dZ1 = np.dot(W[1].T,dZ2) * dReLU(Z1)
-            dW1 = np.dot(dZ1, Xt.T) / batchsize
-            db1 = np.sum(dZ1, axis = 1, keepdims = True) / batchsize
+            dW, dB = backward_propagation(A, Z, Yt, W, B, L, n)
 
             #Update Parameters
             α = 0.01
-            W[0] = W[0] - α*dW1
-            B[0] = B[0] - α*db1
-            W[1] = W[1] - α*dW2
-            B[1] = B[1] - α*db2
-            W[2] = W[2] - α*dW3
-            B[2] = B[2] - α*db3
-    return W, B, mean, var
+            for i in range(1, L):
+                print(i)
+                W[i] = W[i] - α*dW[i]
+                B[i] = B[i] - α*dB[i]
+    return W, B, mean, var, cost_history, accuracy_history
 
-W, B, mean, var = basicNN()
+W, B, mean, var, cost, acc = basicNN()
 
-print(np.shape(W[0]), W[0][0][0])
+print(acc)
+
+#print(np.shape(W[0]), W[0][0][0])\
+#reset_ZA(4, [784,9,5,10], X[0], 128)
