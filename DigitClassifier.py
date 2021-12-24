@@ -134,7 +134,7 @@ def forward_propagation(L, n, batchsize, W, B, Z, A):
         Z[i] = np.dot(W[i], A[i-1]).reshape(n[i], batchsize) + B[i]
         if (i == L-1):
             A[i] = SM(Z[i])
-            print(A[i])
+            #print(A[i])
         else:
             A[i] = ReLU(Z[i])
     return Z, A
@@ -211,19 +211,19 @@ def basicNN():
     _, Batch = (np.shape(X))
     mean = np.sum(X, axis = 1).reshape(784,1) / Batch
     #print(np.shape(mean))
-    X = X - mean
-    
-    var = np.sum(X**2, axis = 1).reshape(784,1) / Batch
-    #print(np.shape(var))
-    for i in range(len(var)):
-        if var[i] != 0:
-            X[i] = X[i] / var[i]
+    #X = X - mean
+    #
+    #var = np.sum(X**2, axis = 1).reshape(784,1) / Batch
+    ##print(np.shape(var))
+    #for i in range(len(var)):
+    #    if var[i] != 0:
+    #        X[i] = X[i] / var[i]
 
     num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = Batch, batchsize = 128)
     cost_history = []
     accuracy_history = []
 
-    nepoch = 1
+    nepoch = 100
     for epoch in range(nepoch):
         for i in range(num_batch):
             Xt = X[i]
@@ -247,8 +247,17 @@ def basicNN():
             for i in range(1, L):
                 W[i] = W[i] - α*dW[i]
                 B[i] = B[i] - α*dB[i]
-    return W, B, mean, var, cost_history, accuracy_history
+    return W, B, cost_history, accuracy_history
 
-W, B, mean, var, cost, acc = basicNN()
-
+W, B, cost, acc = basicNN()
+plt.plot([i for i in range(len(acc))],acc)
+#plt.plot([i for i in range(len(cost))], cost)
+print(np.sum(acc)/len(acc))
+plt.show()
 print(acc)
+A = [0]
+beta = 0.98
+for i in range(len(acc)):
+    A.append(beta*A[i] + (1-beta)*acc[i])
+plt.plot([i for i in range(len(A))], A)
+plt.show()
