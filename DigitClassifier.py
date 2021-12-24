@@ -76,7 +76,7 @@ def ReLU(Z):
     return np.maximum(Z, 0)
 
 def SM(Z):
-    return np.exp(Z)/ np.sum(np.exp(Z))
+    return np.exp(Z) / np.sum(np.exp(Z), axis = 0)
 
 def dSM(Z):
     return (SM(Z)*(1-SM(Z)))
@@ -114,7 +114,7 @@ def set_hyperparameters():
         W.append(Wl)
         B.append(bl)
 
-    return L, n, W, B
+    return L, n, W, B, m
 
 def reset_ZA(L, n, Xt, batchsize = 128):
     Z = []
@@ -134,6 +134,7 @@ def forward_propagation(L, n, batchsize, W, B, Z, A):
         Z[i] = np.dot(W[i], A[i-1]).reshape(n[i], batchsize) + B[i]
         if (i == L-1):
             A[i] = SM(Z[i])
+            print(A[i])
         else:
             A[i] = ReLU(Z[i])
     return Z, A
@@ -147,7 +148,7 @@ def get_accuracy(Y_hat, Y):
     prob = np.copy(Y_hat)
     prob[prob > 0.5] = 1
     prob[prob <= 0.5] = 0
-    print(prob.shape, Y.shape)
+    #print(prob.shape, Y.shape, prob[:,0])
     return (prob == Y).all(axis = 0).mean()
 
 def backward_propagation(A, Z, Y, W, B, L, n):
@@ -202,7 +203,7 @@ def basicNN():
     #Cost Calculation
     #Backward Propagation
 
-    L, n, W, B = set_hyperparameters()
+    L, n, W, B, batchsize = set_hyperparameters()
 
     #Loading Parameters
     train_in, train_lab, test_in, test_lab = load_data(train_in = 'train-images-idx3-ubyte.gz', train_lab = 'train-labels-idx1-ubyte.gz', test_lab = 't10k-labels-idx1-ubyte.gz', test_in = 't10k-images-idx3-ubyte.gz')
@@ -218,8 +219,7 @@ def basicNN():
         if var[i] != 0:
             X[i] = X[i] / var[i]
 
-    batchsize = 128
-    num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = 60000, batchsize = 128)
+    num_batch, X, Y, Xr, Yr = make_mini_batch(X,Y, testsize = Batch, batchsize = 128)
     cost_history = []
     accuracy_history = []
 
@@ -245,7 +245,6 @@ def basicNN():
             #Update Parameters
             α = 0.01
             for i in range(1, L):
-                print(i)
                 W[i] = W[i] - α*dW[i]
                 B[i] = B[i] - α*dB[i]
     return W, B, mean, var, cost_history, accuracy_history
@@ -253,6 +252,3 @@ def basicNN():
 W, B, mean, var, cost, acc = basicNN()
 
 print(acc)
-
-#print(np.shape(W[0]), W[0][0][0])\
-#reset_ZA(4, [784,9,5,10], X[0], 128)
