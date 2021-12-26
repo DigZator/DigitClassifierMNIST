@@ -247,16 +247,37 @@ def basicNN():
             for i in range(1, L):
                 W[i] = W[i] - α*dW[i]
                 B[i] = B[i] - α*dB[i]
-    return W, B, cost_history, accuracy_history
+    return W, B, cost_history, accuracy_history, test_in, test_lab
 
-W, B, cost, acc = basicNN()
-plt.plot([i for i in range(len(acc))],acc)
+W, B, cost, acc, test_in, test_lab = basicNN()
+
+def testing(L, n, W, B, test_in, test_lab, batchsize = 10000):
+    test_in = test_in.T.squeeze()
+    Y = np.zeros((10, batchsize))
+    for i in range(batchsize):
+        Y[test_lab[i][0]][i] = 1
+    cost_history = []
+    accuracy_history = []
+    Z, A = reset_ZA(L, n, test_in, batchsize)
+    Z, A = forward_propagation(L, n, batchsize, W, B, Z, A)
+    J = cost_calc(Y_hat = A[L-1],Y = Y)
+    cost_history.append(J)
+    Accuracy = get_accuracy(Y_hat = A[L-1], Y = Y)
+    accuracy_history.append(Accuracy)
+
+    print("Test Set Error : ", np.sum(accuracy_history)/len(accuracy_history))
+    #print(np.sum(J)/len(J))
+
+L, n, _, _, _ = set_hyperparameters()
+testing(L,n, W, B, test_in, test_lab, batchsize = 10000)
+#plt.plot([i for i in range(len(acc))],acc)
 #plt.plot([i for i in range(len(cost))], cost)
-print(np.sum(acc)/len(acc))
-plt.show()
-print(acc)
+print("Train Set Error : ", round(np.sum(acc[-1280:])/1280,4))
+#plt.show()
+#print(acc)
+print("Length of acc : ", len(acc))
 A = [0]
-beta = 0.98
+beta = 0.9921875
 for i in range(len(acc)):
     A.append(beta*A[i] + (1-beta)*acc[i])
 plt.plot([i for i in range(len(A))], A)
